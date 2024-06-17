@@ -98,6 +98,15 @@ class Client:
 class AsyncClient(Client):
     aiohttp_session: Optional[aiohttp.ClientSession] = None
 
+    async def __aenter__(self):
+        if not self.aiohttp_session:
+            self.aiohttp_session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.aiohttp_session:
+            await self.aiohttp_session.close()
+
     async def renew_session(self):
         if not self.aiohttp_session:
             self.aiohttp_session = aiohttp.ClientSession()
