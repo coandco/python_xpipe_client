@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "xpipe_client"
-version = "0.1.0"
+version = "0.1.1"
 description = "Client for the XPipe API"
 authors = ["Clint Olson <coandco@gmail.com>"]
 license = "MIT"
