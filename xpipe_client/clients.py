@@ -61,7 +61,7 @@ class Client:
         result = requests.post(*args, **kwargs)
         if self.raise_errors:
             result.raise_for_status()
-        return result.json()
+        return result.content
 
     def get(self, *args, **kwargs):
         if not self.session:
@@ -70,27 +70,29 @@ class Client:
         result = requests.get(*args, **kwargs)
         if self.raise_errors:
             result.raise_for_status()
-        return result.json()
+        return result.content
 
     def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*"):
         endpoint = f"{self.base_url}/connection/query"
         data = {"categoryFilter": categories, "connectionFilter": connections, "typeFilter": types}
-        return self.post(endpoint, json=data)
+        response = self.post(endpoint, json=data)
+        return json.loads(response).get('found', [])
 
     def shell_start(self, conn_uuid: str):
         endpoint = f"{self.base_url}/shell/start"
-        data = {"uuid": conn_uuid}
-        return self.post(endpoint, json=data)
+        data = {"connection": conn_uuid}
+        self.post(endpoint, json=data)
 
-    def shell_stop(self, shell_uuid: str):
+    def shell_stop(self, conn_uuid: str):
         endpoint = f"{self.base_url}/shell/stop"
-        data = {"uuid": shell_uuid}
-        return self.post(endpoint, json=data)
+        data = {"connection": conn_uuid}
+        self.post(endpoint, json=data)
 
-    def shell_exec(self, shell_uuid: str, command: str):
+    def shell_exec(self, conn_uuid: str, command: str):
         endpoint = f"{self.base_url}/shell/exec"
-        data = {"uuid": shell_uuid, "command": command}
-        return self.post(endpoint, json=data)
+        data = {"connection": conn_uuid, "command": command}
+        response = self.post(endpoint, json=data)
+        return json.loads(response)
 
 
 class AsyncClient(Client):
@@ -121,7 +123,7 @@ class AsyncClient(Client):
         async with self.aiohttp_session.post(*args, **kwargs) as resp:
             if self.raise_errors:
                 resp.raise_for_status()
-            return await resp.json(content_type=None)
+            return await resp.text()
 
     async def get(self, *args, **kwargs):
         if not self.session:
@@ -130,24 +132,26 @@ class AsyncClient(Client):
         async with self.aiohttp_session.get(*args, **kwargs) as resp:
             if self.raise_errors:
                 resp.raise_for_status()
-            return await resp.json(content_type=None)
+            return await resp.text()
 
     async def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*"):
         endpoint = f"{self.base_url}/connection/query"
         data = {"categoryFilter": categories, "connectionFilter": connections, "typeFilter": types}
-        return await self.post(endpoint, json=data)
+        response = await self.post(endpoint, json=data)
+        return json.loads(response).get("found", [])
 
     async def shell_start(self, conn_uuid: str):
         endpoint = f"{self.base_url}/shell/start"
-        data = {"uuid": conn_uuid}
-        return await self.post(endpoint, json=data)
+        data = {"connection": conn_uuid}
+        await self.post(endpoint, json=data)
 
-    async def shell_stop(self, shell_uuid: str):
+    async def shell_stop(self, conn_uuid: str):
         endpoint = f"{self.base_url}/shell/stop"
-        data = {"uuid": shell_uuid}
-        return await self.post(endpoint, json=data)
+        data = {"connection": conn_uuid}
+        await self.post(endpoint, json=data)
 
-    async def shell_exec(self, shell_uuid: str, command: str):
+    async def shell_exec(self, conn_uuid: str, command: str):
         endpoint = f"{self.base_url}/shell/exec"
-        data = {"uuid": shell_uuid, "command": command}
-        return await self.post(endpoint, json=data)
+        data = {"connection": conn_uuid, "command": command}
+        response = await self.post(endpoint, json=data)
+        return json.loads(response)
