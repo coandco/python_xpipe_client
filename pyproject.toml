@@ -3,6 +3,7 @@ name = "xpipe_client"
 version = "0.1.1"
 description = "Client for the XPipe API"
 authors = ["Clint Olson <coandco@gmail.com>"]
+repository = "https://github.com/coandco/python_xpipe_client"
 license = "MIT"
 
 [tool.poetry.dependencies]
