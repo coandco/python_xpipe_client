@@ -98,15 +98,9 @@ class Client:
 class AsyncClient(Client):
     aiohttp_session: Optional[aiohttp.ClientSession] = None
 
-    def __init__(self, *args, **kwargs):
-        self.aiohttp_session = aiohttp.ClientSession()
-        super().__init__(*args, **kwargs)
-
-    def __del__(self):
-        if self.aiohttp_session:
-            self.aiohttp_session.close()
-
     async def renew_session(self):
+        if not self.aiohttp_session:
+            self.aiohttp_session = aiohttp.ClientSession()
         if self.auth_type == "ApiKey":
             auth = {"type": self.auth_type, "key": self.token}
         else:
