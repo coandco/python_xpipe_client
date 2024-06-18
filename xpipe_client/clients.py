@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union, List
 
 import aiohttp
 import requests
@@ -54,7 +54,7 @@ class Client:
         else:
             raise AuthFailedException(json.dumps(response))
 
-    def post(self, *args, **kwargs):
+    def post(self, *args, **kwargs) -> bytes:
         if not self.session:
             self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
@@ -63,7 +63,7 @@ class Client:
             result.raise_for_status()
         return result.content
 
-    def get(self, *args, **kwargs):
+    def get(self, *args, **kwargs) -> bytes:
         if not self.session:
             self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
@@ -72,27 +72,53 @@ class Client:
             result.raise_for_status()
         return result.content
 
-    def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*"):
+    def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[dict]:
         endpoint = f"{self.base_url}/connection/query"
         data = {"categoryFilter": categories, "connectionFilter": connections, "typeFilter": types}
         response = self.post(endpoint, json=data)
         return json.loads(response).get('found', [])
 
-    def shell_start(self, conn_uuid: str):
+    def shell_start(self, conn_uuid: str) -> dict:
         endpoint = f"{self.base_url}/shell/start"
         data = {"connection": conn_uuid}
-        self.post(endpoint, json=data)
+        response = self.post(endpoint, json=data)
+        return json.loads(response) if response else {}
 
     def shell_stop(self, conn_uuid: str):
         endpoint = f"{self.base_url}/shell/stop"
         data = {"connection": conn_uuid}
         self.post(endpoint, json=data)
 
-    def shell_exec(self, conn_uuid: str, command: str):
+    def shell_exec(self, conn_uuid: str, command: str) -> dict:
         endpoint = f"{self.base_url}/shell/exec"
         data = {"connection": conn_uuid, "command": command}
         response = self.post(endpoint, json=data)
-        return json.loads(response)
+        return json.loads(response) if response else {}
+
+    def fs_blob(self, blob_data: Union[bytes, str]) -> str:
+        endpoint = f"{self.base_url}/fs/blob"
+        if isinstance(blob_data, str):
+            blob_data = blob_data.encode('utf-8')
+        response = self.post(endpoint, data=blob_data)
+        return json.loads(response)["blob"]
+
+    def fs_write(self, connection: str, blob: str, path: str):
+        endpoint = f"{self.base_url}/fs/write"
+        data = {
+            "connection": connection,
+            "blob": blob,
+            "path": path
+        }
+        self.post(endpoint, json=data)
+
+    def fs_script(self, connection: str, blob: str) -> str:
+        endpoint = f"{self.base_url}/fs/script"
+        data = {
+            "connection": connection,
+            "blob": blob
+        }
+        response = self.post(endpoint, json=data)
+        return json.loads(response)["path"]
 
 
 class AsyncClient(Client):
@@ -150,7 +176,8 @@ class AsyncClient(Client):
     async def shell_start(self, conn_uuid: str):
         endpoint = f"{self.base_url}/shell/start"
         data = {"connection": conn_uuid}
-        await self.post(endpoint, json=data)
+        response = await self.post(endpoint, json=data)
+        return json.loads(response) if response else {}
 
     async def shell_stop(self, conn_uuid: str):
         endpoint = f"{self.base_url}/shell/stop"
@@ -162,3 +189,28 @@ class AsyncClient(Client):
         data = {"connection": conn_uuid, "command": command}
         response = await self.post(endpoint, json=data)
         return json.loads(response)
+
+    async def fs_blob(self, blob_data: Union[bytes, str]) -> str:
+        endpoint = f"{self.base_url}/fs/blob"
+        if isinstance(blob_data, str):
+            blob_data = blob_data.encode('utf-8')
+        response = await self.post(endpoint, data=blob_data)
+        return json.loads(response)["blob"]
+
+    async def fs_write(self, connection: str, blob: str, path: str):
+        endpoint = f"{self.base_url}/fs/write"
+        data = {
+            "connection": connection,
+            "blob": blob,
+            "path": path
+        }
+        await self.post(endpoint, json=data)
+
+    async def fs_script(self, connection: str, blob: str) -> str:
+        endpoint = f"{self.base_url}/fs/script"
+        data = {
+            "connection": connection,
+            "blob": blob
+        }
+        response = await self.post(endpoint, json=data)
+        return json.loads(response)["path"]
