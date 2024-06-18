@@ -36,7 +36,7 @@ class Client:
                 raise NoTokenFoundException(f"No auth provided and couldn't load xpipe_auth: {e!r}")
 
         if not base_url:
-            base_url = "http://localhost:21723" if ptb else "http://localhost:21722"
+            base_url = "http://127.0.0.1:21723" if ptb else "http://127.0.0.1:21722"
 
         self.token = token
         self.auth_type = auth_type
