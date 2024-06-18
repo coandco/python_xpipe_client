@@ -148,7 +148,7 @@ def test_fs_script(sync_local_client: Client):
     blob = sync_local_client.fs_blob(script)
     try:
         script_path = sync_local_client.fs_script(connection, blob)
-        assert Path(script_path).read_text() == script
+        assert Path(script_path).read_text().strip() == script
         output = sync_local_client.shell_exec(connection, f'"{script_path}"')
         assert output["stdout"].strip() == "hello world"
         sync_local_client.shell_stop(connection)
@@ -166,11 +166,38 @@ async def test_async_fs_script(async_local_client: AsyncClient):
     blob = await async_local_client.fs_blob(script)
     try:
         script_path = await async_local_client.fs_script(connection, blob)
-        assert Path(script_path).read_text() == script
+        assert Path(script_path).read_text().strip() == script
         output = await async_local_client.shell_exec(connection, f'"{script_path}"')
         assert output["stdout"].strip() == "hello world"
         await async_local_client.shell_stop(connection)
     finally:
         Path(script_path).unlink(missing_ok=True)
+
+
+def test_fs_read(sync_local_client: Client):
+    connection = sync_local_client.connection_query(connections="")[0]["connection"]
+    system_info = sync_local_client.shell_start(connection)
+    testfile_path = Path(system_info["temp"]) / "xpipe_testfile"
+    try:
+        testfile_path.write_text("test")
+        file_bytes = sync_local_client.fs_read(connection, str(testfile_path.resolve()))
+        assert file_bytes.decode('utf-8') == "test"
+        sync_local_client.shell_stop(connection)
+    finally:
+        testfile_path.unlink(missing_ok=True)
+
+
+async def test_async_fs_read(async_local_client: AsyncClient):
+    connection = (await async_local_client.connection_query(connections=""))[0]["connection"]
+    system_info = await async_local_client.shell_start(connection)
+    testfile_path = Path(system_info["temp"]) / "xpipe_testfile"
+    try:
+        testfile_path.write_text("test")
+        file_bytes = await async_local_client.fs_read(connection, str(testfile_path.resolve()))
+        assert file_bytes.decode('utf-8') == "test"
+        await async_local_client.shell_stop(connection)
+    finally:
+        testfile_path.unlink(missing_ok=True)
+
 
 
