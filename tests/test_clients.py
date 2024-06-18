@@ -6,13 +6,14 @@ from xpipe_client.clients import Client, AsyncClient
 
 @pytest.fixture
 def sync_local_client():
-    return Client(raise_errors=True)
+    ptb = True if os.environ.get("XPIPE_USE_PTB", None) == '1' else False
+    return Client(raise_errors=True, ptb=ptb)
 
 
 @pytest.fixture
-async def async_local_client():
-    async with AsyncClient(raise_errors=True) as async_client:
-        yield async_client
+def async_local_client():
+    ptb = True if os.environ.get("XPIPE_USE_PTB", None) == '1' else False
+    return AsyncClient(raise_errors=True, ptb=ptb)
 
 
 def test_sync_local_login(sync_local_client: Client):
@@ -29,8 +30,9 @@ async def test_async_local_login(async_local_client: AsyncClient):
 
 def test_sync_apikey_login():
     apikey = os.environ.get("XPIPE_APIKEY", None)
+    ptb = True if os.environ.get("XPIPE_USE_PTB", None) == '1' else False
     assert apikey is not None
-    client = Client(token=apikey)
+    client = Client(token=apikey, ptb=ptb)
     assert client.session is None
     client.renew_session()
     assert client.session is not None
@@ -38,8 +40,9 @@ def test_sync_apikey_login():
 
 async def test_async_apikey_login():
     apikey = os.environ.get("XPIPE_APIKEY", None)
+    ptb = True if os.environ.get("XPIPE_USE_PTB", None) == '1' else False
     assert apikey is not None
-    client = AsyncClient(token=apikey)
+    client = AsyncClient(token=apikey, ptb=ptb)
     assert client.session is None
     await client.renew_session()
     assert client.session is not None

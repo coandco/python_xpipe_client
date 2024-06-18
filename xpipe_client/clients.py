@@ -23,7 +23,7 @@ class Client:
     session: Optional[str] = None
 
     def __init__(
-        self, token: Optional[str] = None, base_url: str = "http://localhost:21723", raise_errors: bool = False
+        self, token: Optional[str] = None, base_url: Optional[str] = None, ptb: bool = False, raise_errors: bool = False
     ):
         auth_type = "ApiKey"
         # Try getting the auth from the local filesystem if none is provided
@@ -34,6 +34,9 @@ class Client:
                 token = auth_file.read_text().strip()
             except Exception as e:
                 raise NoTokenFoundException(f"No auth provided and couldn't load xpipe_auth: {e!r}")
+
+        if not base_url:
+            base_url = "http://localhost:21723" if ptb else "http://localhost:21722"
 
         self.token = token
         self.auth_type = auth_type
