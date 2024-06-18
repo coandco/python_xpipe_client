@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "xpipe_client"
-version = "0.1.5"
+version = "0.1.6"
 description = "Client for the XPipe API"
 authors = ["Clint Olson <coandco@gmail.com>"]
 repository = "https://github.com/coandco/python_xpipe_client"
@@ -9,7 +9,7 @@ license = "MIT"
 [tool.poetry.dependencies]
 python = "^3.10"
 requests = "^2.32.3"
-aiohttp = "^3.9.5"
+aiohttp-requests = "^0.2.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"

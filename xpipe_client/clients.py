@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from typing import Optional, Union, List
 
-import aiohttp
+from aiohttp_requests import requests as async_requests
 import requests
 
 
@@ -132,9 +132,8 @@ class AsyncClient(Client):
             auth = {"type": self.auth_type, "authFileContent": self.token}
         data = {"auth": auth, "client": {"type": "Api", "name": "python_xpipe_client"}}
 
-        async with aiohttp.ClientSession() as aiohttp_session:
-            async with aiohttp_session.post(f"{self.base_url}/handshake", json=data) as resp:
-                parsed = await resp.json(content_type=None)
+        resp = await async_requests.post(f"{self.base_url}/handshake", json=data)
+        parsed = await resp.json(content_type=None)
         session_token = parsed.get("sessionToken", None)
         if session_token:
             self.session = session_token
@@ -145,21 +144,19 @@ class AsyncClient(Client):
         if not self.session:
             await self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
-        async with aiohttp.ClientSession() as aiohttp_session:
-            async with aiohttp_session.post(*args, **kwargs) as resp:
-                if self.raise_errors:
-                    resp.raise_for_status()
-                return await resp.text()
+        resp = await async_requests.post(*args, **kwargs)
+        if self.raise_errors:
+            resp.raise_for_status()
+        return await resp.text()
 
     async def get(self, *args, **kwargs):
         if not self.session:
             await self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
-        async with aiohttp.ClientSession() as aiohttp_session:
-            async with aiohttp_session.get(*args, **kwargs) as resp:
-                if self.raise_errors:
-                    resp.raise_for_status()
-                return await resp.text()
+        resp = await async_requests.get(*args, **kwargs)
+        if self.raise_errors:
+            resp.raise_for_status()
+        return await resp.text()
 
     async def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*"):
         endpoint = f"{self.base_url}/connection/query"
