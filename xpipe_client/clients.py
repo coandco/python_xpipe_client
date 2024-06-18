@@ -155,7 +155,7 @@ class AsyncClient(Client):
         resp = await async_requests.post(*args, **kwargs)
         if self.raise_errors:
             resp.raise_for_status()
-        return await resp.text()
+        return await resp.read()
 
     async def get(self, *args, **kwargs):
         if not self.session:
