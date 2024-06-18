@@ -117,10 +117,12 @@ def test_fs_write(sync_local_client: Client):
     blob = sync_local_client.fs_blob("test")
     system_info = sync_local_client.shell_start(connection)
     testfile_path = Path(system_info["temp"]) / "xpipe_testfile"
-    sync_local_client.fs_write(connection, blob, str(testfile_path.resolve()))
-    sync_local_client.shell_stop(connection)
-    assert testfile_path.read_text() == "test"
-    testfile_path.unlink(missing_ok=True)
+    try:
+        sync_local_client.fs_write(connection, blob, str(testfile_path.resolve()))
+        sync_local_client.shell_stop(connection)
+        assert testfile_path.read_text() == "test"
+    finally:
+        testfile_path.unlink(missing_ok=True)
 
 
 async def test_async_fs_write(async_local_client: AsyncClient):
@@ -128,10 +130,12 @@ async def test_async_fs_write(async_local_client: AsyncClient):
     blob = await async_local_client.fs_blob("test")
     system_info = await async_local_client.shell_start(connection)
     testfile_path = Path(system_info["temp"]) / "xpipe_testfile"
-    await async_local_client.fs_write(connection, blob, str(testfile_path.resolve()))
-    await async_local_client.shell_stop(connection)
-    assert testfile_path.read_text() == "test"
-    testfile_path.unlink(missing_ok=True)
+    try:
+        await async_local_client.fs_write(connection, blob, str(testfile_path.resolve()))
+        await async_local_client.shell_stop(connection)
+        assert testfile_path.read_text() == "test"
+    finally:
+        testfile_path.unlink(missing_ok=True)
 
 
 def test_fs_script(sync_local_client: Client):
@@ -142,12 +146,14 @@ def test_fs_script(sync_local_client: Client):
     else:
         script = "#!/bin/sh\necho hello world"
     blob = sync_local_client.fs_blob(script)
-    script_path = sync_local_client.fs_script(connection, blob)
-    assert Path(script_path).read_text() == script
-    output = sync_local_client.shell_exec(connection, f'"{script_path}"')
-    assert output["stdout"].strip() == "hello world"
-    sync_local_client.shell_stop(connection)
-    Path(script_path).unlink(missing_ok=True)
+    try:
+        script_path = sync_local_client.fs_script(connection, blob)
+        assert Path(script_path).read_text() == script
+        output = sync_local_client.shell_exec(connection, f'"{script_path}"')
+        assert output["stdout"].strip() == "hello world"
+        sync_local_client.shell_stop(connection)
+    finally:
+        Path(script_path).unlink(missing_ok=True)
 
 
 async def test_async_fs_script(async_local_client: AsyncClient):
@@ -158,11 +164,13 @@ async def test_async_fs_script(async_local_client: AsyncClient):
     else:
         script = "#!/bin/sh\necho hello world"
     blob = await async_local_client.fs_blob(script)
-    script_path = await async_local_client.fs_script(connection, blob)
-    assert Path(script_path).read_text() == script
-    output = await async_local_client.shell_exec(connection, f'"{script_path}"')
-    assert output["stdout"].strip() == "hello world"
-    await async_local_client.shell_stop(connection)
-    Path(script_path).unlink(missing_ok=True)
+    try:
+        script_path = await async_local_client.fs_script(connection, blob)
+        assert Path(script_path).read_text() == script
+        output = await async_local_client.shell_exec(connection, f'"{script_path}"')
+        assert output["stdout"].strip() == "hello world"
+        await async_local_client.shell_stop(connection)
+    finally:
+        Path(script_path).unlink(missing_ok=True)
 
 
