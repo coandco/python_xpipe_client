@@ -122,30 +122,19 @@ class Client:
 
 
 class AsyncClient(Client):
-    aiohttp_session: Optional[aiohttp.ClientSession] = None
-
-    async def __aenter__(self):
-        if not self.aiohttp_session:
-            self.aiohttp_session = aiohttp.ClientSession()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.aiohttp_session:
-            await self.aiohttp_session.close()
-
     async def renew_session(self):
-        if not self.aiohttp_session:
-            self.aiohttp_session = aiohttp.ClientSession()
         if self.auth_type == "ApiKey":
             auth = {"type": self.auth_type, "key": self.token}
         else:
             auth = {"type": self.auth_type, "authFileContent": self.token}
         data = {"auth": auth, "client": {"type": "Api", "name": "python_xpipe_client"}}
-        async with self.aiohttp_session.post(f"{self.base_url}/handshake", json=data) as resp:
-            parsed = await resp.json(content_type=None)
-        session = parsed.get("sessionToken", None)
-        if session:
-            self.session = session
+
+        async with aiohttp.ClientSession() as aiohttp_session:
+            async with aiohttp_session.post(f"{self.base_url}/handshake", json=data) as resp:
+                parsed = await resp.json(content_type=None)
+        session_token = parsed.get("sessionToken", None)
+        if session_token:
+            self.session = session_token
         else:
             raise AuthFailedException(json.dumps(parsed))
 
@@ -153,19 +142,21 @@ class AsyncClient(Client):
         if not self.session:
             await self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
-        async with self.aiohttp_session.post(*args, **kwargs) as resp:
-            if self.raise_errors:
-                resp.raise_for_status()
-            return await resp.text()
+        async with aiohttp.ClientSession() as aiohttp_session:
+            async with aiohttp_session.post(*args, **kwargs) as resp:
+                if self.raise_errors:
+                    resp.raise_for_status()
+                return await resp.text()
 
     async def get(self, *args, **kwargs):
         if not self.session:
             await self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
-        async with self.aiohttp_session.get(*args, **kwargs) as resp:
-            if self.raise_errors:
-                resp.raise_for_status()
-            return await resp.text()
+        async with aiohttp.ClientSession() as aiohttp_session:
+            async with aiohttp_session.get(*args, **kwargs) as resp:
+                if self.raise_errors:
+                    resp.raise_for_status()
+                return await resp.text()
 
     async def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*"):
         endpoint = f"{self.base_url}/connection/query"
