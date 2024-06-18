@@ -123,6 +123,14 @@ class Client:
         response = self.post(endpoint, json=data)
         return json.loads(response)["path"]
 
+    def fs_read(self, connection: str, path: str) -> bytes:
+        endpoint = f"{self.base_url}/fs/read"
+        data = {
+            "connection": connection,
+            "path": path
+        }
+        return self.post(endpoint, json=data)
+
 
 class AsyncClient(Client):
     async def renew_session(self):
@@ -205,3 +213,12 @@ class AsyncClient(Client):
         }
         response = await self.post(endpoint, json=data)
         return json.loads(response)["path"]
+
+    async def fs_read(self, connection: str, path: str) -> bytes:
+        endpoint = f"{self.base_url}/fs/read"
+        data = {
+            "connection": connection,
+            "path": path
+        }
+        bytes = await self.post(endpoint, json=data)
+        return bytes
