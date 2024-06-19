@@ -35,7 +35,7 @@ client.shell_stop(first_connection_uuid)
 There's also an async version of the client that can be accessed as AsyncClient:
 ```python
 import asyncio
-from xpipe_client.clients import AsyncClient
+from xpipe_client import AsyncClient
 
 
 async def main():
