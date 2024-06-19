@@ -1,9 +1,10 @@
 [tool.poetry]
 name = "xpipe_client"
-version = "0.1.8"
+version = "0.1.9"
 description = "Client for the XPipe API"
 authors = ["Clint Olson <coandco@gmail.com>"]
 repository = "https://github.com/coandco/python_xpipe_client"
+readme = "README.md"
 license = "MIT"
 
 [tool.poetry.dependencies]
