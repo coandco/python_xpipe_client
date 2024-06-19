@@ -9,7 +9,7 @@ python3 -m pip install git+https://github.com/coandco/python_xpipe_client
 ## Usage
 
 ```python
-from xpipe_client.clients import Client
+from xpipe_client import Client
 
 # By default, Client() will read the API key from xpipe_auth on the local filesystem
 # and talk to the XPipe API on localhost.  To connect to a remote instance with an API
