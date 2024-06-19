@@ -1,9 +1,13 @@
 # xpipe_client
+[![GitHub license](https://img.shields.io/github/license/coandco/python_xpipe_client.svg)](https://github.com/coandco/python_xpipe_client/blob/master/LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/xpipe_client)](https://pypi.org/project/xpipe_client/)
+
 Python client for the XPipe API
+
 
 ## Installation
 ```
-python3 -m pip install git+https://github.com/coandco/python_xpipe_client
+python3 -m pip install xpipe_client
 ```
 
 ## Usage
