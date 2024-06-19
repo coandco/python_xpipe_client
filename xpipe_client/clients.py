@@ -1,8 +1,9 @@
 import json
 import os
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Optional, Union, List, BinaryIO
 
+import aiohttp.web_response
 from aiohttp_requests import requests as async_requests
 import requests
 
@@ -57,23 +58,29 @@ class Client:
         else:
             raise AuthFailedException(json.dumps(response))
 
-    def post(self, *args, **kwargs) -> bytes:
+    def _post(self, *args, **kwargs) -> requests.Response:
         if not self.session:
             self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
         result = requests.post(*args, **kwargs)
         if self.raise_errors:
             result.raise_for_status()
-        return result.content
+        return result
 
-    def get(self, *args, **kwargs) -> bytes:
+    def post(self, *args, **kwargs) -> bytes:
+        return self._post(*args, **kwargs).content
+
+    def _get(self, *args, **kwargs) -> requests.Response:
         if not self.session:
             self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
         result = requests.get(*args, **kwargs)
         if self.raise_errors:
             result.raise_for_status()
-        return result.content
+        return result
+
+    def get(self, *args, **kwargs) -> bytes:
+        return self._get(*args, **kwargs).content
 
     def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[dict]:
         endpoint = f"{self.base_url}/connection/query"
@@ -98,7 +105,7 @@ class Client:
         response = self.post(endpoint, json=data)
         return json.loads(response) if response else {}
 
-    def fs_blob(self, blob_data: Union[bytes, str]) -> str:
+    def fs_blob(self, blob_data: Union[bytes, str, BinaryIO]) -> str:
         endpoint = f"{self.base_url}/fs/blob"
         if isinstance(blob_data, str):
             blob_data = blob_data.encode('utf-8')
@@ -123,13 +130,18 @@ class Client:
         response = self.post(endpoint, json=data)
         return json.loads(response)["path"]
 
-    def fs_read(self, connection: str, path: str) -> bytes:
+    def _fs_read(self, connection: str, path: str) -> requests.Response:
+        # Internal version of the function that returns the raw response object
+        # Here so clients can do things like stream the response to disk if it's a big file
         endpoint = f"{self.base_url}/fs/read"
         data = {
             "connection": connection,
             "path": path
         }
-        return self.post(endpoint, json=data)
+        return self._post(endpoint, json=data, stream=True)
+
+    def fs_read(self, connection: str, path: str) -> bytes:
+        return self._fs_read(connection, path).content
 
 
 class AsyncClient(Client):
@@ -148,23 +160,31 @@ class AsyncClient(Client):
         else:
             raise AuthFailedException(json.dumps(parsed))
 
-    async def post(self, *args, **kwargs):
+    async def _post(self, *args, **kwargs) -> aiohttp.ClientResponse:
         if not self.session:
             await self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
         resp = await async_requests.post(*args, **kwargs)
         if self.raise_errors:
             resp.raise_for_status()
+        return resp
+
+    async def post(self, *args, **kwargs) -> bytes:
+        resp = await self._post(*args, **kwargs)
         return await resp.read()
 
-    async def get(self, *args, **kwargs):
+    async def _get(self, *args, **kwargs) -> aiohttp.ClientResponse:
         if not self.session:
             await self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
         resp = await async_requests.get(*args, **kwargs)
         if self.raise_errors:
             resp.raise_for_status()
-        return await resp.text()
+        return resp
+
+    async def get(self, *args, **kwargs) -> bytes:
+        resp = await self._get(*args, **kwargs)
+        return await resp.read()
 
     async def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*"):
         endpoint = f"{self.base_url}/connection/query"
@@ -214,11 +234,17 @@ class AsyncClient(Client):
         response = await self.post(endpoint, json=data)
         return json.loads(response)["path"]
 
-    async def fs_read(self, connection: str, path: str) -> bytes:
+    async def _fs_read(self, connection: str, path: str) -> aiohttp.ClientResponse:
+        # Internal version of the function that returns the raw response object
+        # Here so clients can do things like stream the response to disk if it's a big file
         endpoint = f"{self.base_url}/fs/read"
         data = {
             "connection": connection,
             "path": path
         }
-        bytes = await self.post(endpoint, json=data)
-        return bytes
+        resp = await self._post(endpoint, json=data)
+        return resp
+
+    async def fs_read(self, connection: str, path: str) -> bytes:
+        resp = await self._fs_read(connection, path)
+        return await resp.read()
