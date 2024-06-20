@@ -31,7 +31,7 @@ async def test_async_local_login(async_local_client: AsyncClient):
 def test_sync_apikey_login():
     apikey = os.environ.get("XPIPE_APIKEY", None)
     ptb = True if os.environ.get("XPIPE_USE_PTB", None) == '1' else False
-    assert apikey is not None
+    assert apikey is not None, "XPIPE_APIKEY must be defined to test ApiKey login"
     client = Client(token=apikey, ptb=ptb)
     assert client.session is None
     client.renew_session()
@@ -41,7 +41,7 @@ def test_sync_apikey_login():
 async def test_async_apikey_login():
     apikey = os.environ.get("XPIPE_APIKEY", None)
     ptb = True if os.environ.get("XPIPE_USE_PTB", None) == '1' else False
-    assert apikey is not None
+    assert apikey is not None, "XPIPE_APIKEY must be defined to test ApiKey login"
     client = AsyncClient(token=apikey, ptb=ptb)
     assert client.session is None
     await client.renew_session()

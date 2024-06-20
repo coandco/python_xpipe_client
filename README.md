@@ -67,3 +67,14 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+## Tests
+To run the test suite, you'll need to define a couple of env vars.  Specifically,
+`XPIPE_USE_PTB=1` will cause the tests to use the PTB port instead of the release port, while
+`XPIPE_APIKEY=<api_key>` will allow the two "log in with the ApiKey rather than Local method"
+tests to work.  Here's the recommended method for running the tests with poetry:
+```commandline
+cd /path/to/python_xpipe_client
+poetry install
+XPIPE_USE_PTB=1 XPIPE_APIKEY=<api_key> poetry run pytest
+```
