@@ -24,7 +24,7 @@ class Client:
     session: Optional[str] = None
 
     def __init__(
-        self, token: Optional[str] = None, base_url: Optional[str] = None, ptb: bool = False, raise_errors: bool = False
+        self, token: Optional[str] = None, base_url: Optional[str] = None, ptb: bool = False, raise_errors: bool = True
     ):
         auth_type = "ApiKey"
         # Try getting the auth from the local filesystem if none is provided
