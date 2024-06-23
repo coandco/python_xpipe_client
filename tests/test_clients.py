@@ -146,8 +146,8 @@ def test_fs_script(sync_local_client: Client):
     else:
         script = "#!/bin/sh\necho hello world"
     blob = sync_local_client.fs_blob(script)
+    script_path = sync_local_client.fs_script(connection, blob)
     try:
-        script_path = sync_local_client.fs_script(connection, blob)
         assert Path(script_path).read_text().strip() == script
         output = sync_local_client.shell_exec(connection, f'"{script_path}"')
         assert output["stdout"].strip() == "hello world"
@@ -164,8 +164,8 @@ async def test_async_fs_script(async_local_client: AsyncClient):
     else:
         script = "#!/bin/sh\necho hello world"
     blob = await async_local_client.fs_blob(script)
+    script_path = await async_local_client.fs_script(connection, blob)
     try:
-        script_path = await async_local_client.fs_script(connection, blob)
         assert Path(script_path).read_text().strip() == script
         output = await async_local_client.shell_exec(connection, f'"{script_path}"')
         assert output["stdout"].strip() == "hello world"

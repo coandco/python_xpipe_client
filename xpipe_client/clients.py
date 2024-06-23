@@ -1,19 +1,15 @@
 import json
 import os
+from contextlib import suppress
 from pathlib import Path
 from typing import Optional, Union, List, BinaryIO
 
 import aiohttp.web_response
+from aiohttp import ClientResponseError
 from aiohttp_requests import requests as async_requests
 import requests
 
-
-class NoTokenFoundException(Exception):
-    pass
-
-
-class AuthFailedException(Exception):
-    pass
+from .exceptions import NoTokenFoundException, AuthFailedException, error_code_map
 
 
 class Client:
@@ -62,10 +58,19 @@ class Client:
         if not self.session:
             self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
-        result = requests.post(*args, **kwargs)
-        if self.raise_errors:
-            result.raise_for_status()
-        return result
+        resp: requests.Response = requests.post(*args, **kwargs)
+        status_code, reason = resp.status_code, error_code_map.get(resp.status_code, "Unknown Code")
+        if self.raise_errors and status_code >= 400:
+            message = f"{status_code} {reason} for url: {resp.url}"
+            # Attempt to enrich the message with the parsed reason
+            if status_code == 400:
+                with suppress(Exception):
+                    message = f'Client Error for {resp.url}: {resp.json()["message"]}'
+            elif status_code == 500:
+                with suppress(Exception):
+                    message = f'Server Error for {resp.url}: {resp.json()["error"]["message"]}'
+            raise requests.HTTPError(message, response=resp)
+        return resp
 
     def post(self, *args, **kwargs) -> bytes:
         return self._post(*args, **kwargs).content
@@ -74,10 +79,23 @@ class Client:
         if not self.session:
             self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
-        result = requests.get(*args, **kwargs)
-        if self.raise_errors:
-            result.raise_for_status()
-        return result
+        resp = requests.get(*args, **kwargs)
+        status_code, reason = resp.status_code, error_code_map.get(resp.status_code, "Unknown Code")
+        if self.raise_errors and status_code >= 400:
+            message = f"{status_code} {reason} for url: {resp.url}"
+            # Attempt to enrich the message with the parsed reason
+            if status_code == 400:
+                try:
+                    message = f'Client Error for {resp.url}: {resp.json()["message"]}'
+                except Exception:
+                    pass
+            elif status_code == 500:
+                try:
+                    message = f'Server Error for {resp.url}: {resp.json()["error"]["message"]}'
+                except Exception:
+                    pass
+            raise requests.HTTPError(message, response=resp)
+        return resp
 
     def get(self, *args, **kwargs) -> bytes:
         return self._get(*args, **kwargs).content
@@ -165,8 +183,24 @@ class AsyncClient(Client):
             await self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
         resp = await async_requests.post(*args, **kwargs)
-        if self.raise_errors:
-            resp.raise_for_status()
+        if self.raise_errors and not resp.ok:
+            status_code, reason = resp.status, error_code_map.get(resp.status, "Unknown Code")
+            message = f"{status_code} {reason} for url: {resp.url}"
+            # Attempt to enrich the message with the parsed reason
+            text = await resp.text()
+            if status_code == 400:
+                with suppress(Exception):
+                    message = f'Client Error: {json.loads(text)["message"]}'
+            elif status_code == 500:
+                with suppress(Exception):
+                    message = f'Server Error: {json.loads(text)["error"]["message"]}'
+            raise ClientResponseError(
+                resp.request_info,
+                resp.history,
+                status=resp.status,
+                message=message,
+                headers=resp.headers,
+            )
         return resp
 
     async def post(self, *args, **kwargs) -> bytes:
@@ -178,8 +212,24 @@ class AsyncClient(Client):
             await self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
         resp = await async_requests.get(*args, **kwargs)
-        if self.raise_errors:
-            resp.raise_for_status()
+        if self.raise_errors and not resp.ok:
+            status_code, reason = resp.status, error_code_map.get(resp.status, "Unknown Code")
+            message = f"{status_code} {reason} for url: {resp.url}"
+            # Attempt to enrich the message with the parsed reason
+            text = await resp.text()
+            if status_code == 400:
+                with suppress(Exception):
+                    message = f'Client Error for {resp.url}: {json.loads(text)["message"]}'
+            elif status_code == 500:
+                with suppress(Exception):
+                    message = f'Server Error for {resp.url}: {json.loads(text)["error"]["message"]}'
+            raise ClientResponseError(
+                resp.request_info,
+                resp.history,
+                status=resp.status,
+                message=message,
+                headers=resp.headers,
+            )
         return resp
 
     async def get(self, *args, **kwargs) -> bytes:
