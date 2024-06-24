@@ -163,6 +163,10 @@ class Client:
 
 
 class AsyncClient(Client):
+    @classmethod
+    def from_sync_client(cls, sync: Client) -> 'AsyncClient':
+        return cls(token=sync.token, base_url=sync.base_url, raise_errors=sync.raise_errors)
+
     async def renew_session(self):
         if self.auth_type == "ApiKey":
             auth = {"type": self.auth_type, "key": self.token}
