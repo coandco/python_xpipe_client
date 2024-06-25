@@ -100,11 +100,25 @@ class Client:
     def get(self, *args, **kwargs) -> bytes:
         return self._get(*args, **kwargs).content
 
-    def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[dict]:
+    def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[str]:
         endpoint = f"{self.base_url}/connection/query"
         data = {"categoryFilter": categories, "connectionFilter": connections, "typeFilter": types}
         response = self.post(endpoint, json=data)
         return json.loads(response).get('found', [])
+
+    def connection_info(self, uuids: Union[str, List[str]]) -> List[dict]:
+        endpoint = f"{self.base_url}/connection/info"
+        # If we're passed a single UUID, wrap it in a list like the API expects
+        if not isinstance(uuids, list):
+            uuids = [uuids]
+        data = {"connections": uuids}
+        response = self.post(endpoint, json=data)
+        return json.loads(response).get("infos", [])
+
+    def get_connections(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[dict]:
+        """Convenience method to chain connection/query with connection/info"""
+        uuids = self.connection_query(categories, connections, types)
+        return self.connection_info(uuids) if uuids else []
 
     def shell_start(self, conn_uuid: str) -> dict:
         endpoint = f"{self.base_url}/shell/start"
@@ -243,13 +257,26 @@ class AsyncClient(Client):
         resp = await self._get(*args, **kwargs)
         return await resp.read()
 
-    async def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*"):
+    async def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[str]:
         endpoint = f"{self.base_url}/connection/query"
         data = {"categoryFilter": categories, "connectionFilter": connections, "typeFilter": types}
         response = await self.post(endpoint, json=data)
         return json.loads(response).get("found", [])
 
-    async def shell_start(self, conn_uuid: str):
+    async def connection_info(self, uuids: Union[str, List[str]]) -> List[dict]:
+        endpoint = f"{self.base_url}/connection/info"
+        # If we're passed a single UUID, wrap it in a list like the API expects
+        if not isinstance(uuids, list):
+            uuids = [uuids]
+        data = {"connections": uuids}
+        response = await self.post(endpoint, json=data)
+        return json.loads(response).get("infos", [])
+
+    async def get_connections(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[dict]:
+        uuids = await self.connection_query(categories, connections, types)
+        return (await self.connection_info(uuids)) if uuids else []
+
+    async def shell_start(self, conn_uuid: str) -> dict:
         endpoint = f"{self.base_url}/shell/start"
         data = {"connection": conn_uuid}
         response = await self.post(endpoint, json=data)
@@ -260,7 +287,7 @@ class AsyncClient(Client):
         data = {"connection": conn_uuid}
         await self.post(endpoint, json=data)
 
-    async def shell_exec(self, conn_uuid: str, command: str):
+    async def shell_exec(self, conn_uuid: str, command: str) -> dict:
         endpoint = f"{self.base_url}/shell/exec"
         data = {"connection": conn_uuid, "command": command}
         response = await self.post(endpoint, json=data)
