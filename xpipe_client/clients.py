@@ -12,6 +12,12 @@ from packaging.version import Version
 
 from .exceptions import AuthFailedException, NoTokenFoundException, error_code_map
 
+import logging
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+logger.setLevel(logging.DEBUG)
+
 
 class Client:
     token: str
@@ -50,6 +56,7 @@ class Client:
         data = {"auth": auth, "client": {"type": "Api", "name": "python_xpipe_client"}}
         result = requests.post(f"{self.base_url}/handshake", json=data)
         response = result.json()
+        logger.debug({'url': f"{self.base_url}/handshake", 'data': data, 'status_code': result.status_code, 'response': response})
         session = response.get("sessionToken", None)
         if session:
             self.session = session
@@ -63,6 +70,9 @@ class Client:
         if not self.session:
             self.renew_session()
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
+        url = args[0]
+        data = kwargs.get("json", {})
+        logger.debug(f"xdebug_client post request to {url}: {data}")
         resp: requests.Response = requests.post(*args, **kwargs)
         status_code, reason = resp.status_code, error_code_map.get(resp.status_code, "Unknown Code")
         if self.raise_errors and status_code >= 400:
