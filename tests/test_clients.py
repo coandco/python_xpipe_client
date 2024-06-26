@@ -86,6 +86,16 @@ async def test_async_get_connections(async_local_client: AsyncClient):
     assert local_info["usageCategory"] == "shell"
 
 
+def test_daemon_version(sync_local_client: Client):
+    version_info = sync_local_client.daemon_version()
+    assert set(version_info.keys()) == {"version", "buildVersion", "jvmVersion"}
+
+
+async def test_async_daemon_version(async_local_client: AsyncClient):
+    version_info = await async_local_client.daemon_version()
+    assert set(version_info.keys()) == {"version", "buildVersion", "jvmVersion"}
+
+
 def test_shell_start(sync_local_client: Client):
     local_connection = sync_local_client.connection_query(connections="")[0]
     response = sync_local_client.shell_start(local_connection)

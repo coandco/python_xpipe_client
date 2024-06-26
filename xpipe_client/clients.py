@@ -8,6 +8,7 @@ import aiohttp.web_response
 from aiohttp import ClientResponseError
 from aiohttp_requests import requests as async_requests
 import requests
+from packaging.version import Version
 
 from .exceptions import NoTokenFoundException, AuthFailedException, error_code_map
 
@@ -18,6 +19,7 @@ class Client:
     base_url: str
     raise_errors: bool
     session: Optional[str] = None
+    min_version: Version = Version("10.0-20")
 
     def __init__(
         self, token: Optional[str] = None, base_url: Optional[str] = None, ptb: bool = False, raise_errors: bool = True
@@ -53,6 +55,9 @@ class Client:
             self.session = session
         else:
             raise AuthFailedException(json.dumps(response))
+        assert (
+            Version(self.daemon_version()["version"]) >= self.min_version
+        ), f"xpipe_client requires XPipe of at least {self.min_version}"
 
     def _post(self, *args, **kwargs) -> requests.Response:
         if not self.session:
@@ -119,6 +124,11 @@ class Client:
         """Convenience method to chain connection/query with connection/info"""
         uuids = self.connection_query(categories, connections, types)
         return self.connection_info(uuids) if uuids else []
+
+    def daemon_version(self) -> dict:
+        endpoint = f"{self.base_url}/daemon/version"
+        response = self.get(endpoint)
+        return json.loads(response)
 
     def shell_start(self, conn_uuid: str) -> dict:
         endpoint = f"{self.base_url}/shell/start"
@@ -198,6 +208,9 @@ class AsyncClient(Client):
             self.session = session_token
         else:
             raise AuthFailedException(json.dumps(parsed))
+        assert (
+            Version((await self.daemon_version())["version"]) >= self.min_version
+        ), f"xpipe_client requires XPipe of at least {self.min_version}"
 
     async def _post(self, *args, **kwargs) -> aiohttp.ClientResponse:
         if not self.session:
@@ -275,6 +288,11 @@ class AsyncClient(Client):
     async def get_connections(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[dict]:
         uuids = await self.connection_query(categories, connections, types)
         return (await self.connection_info(uuids)) if uuids else []
+
+    async def daemon_version(self) -> dict:
+        endpoint = f"{self.base_url}/daemon/version"
+        response = await self.get(endpoint)
+        return json.loads(response)
 
     async def shell_start(self, conn_uuid: str) -> dict:
         endpoint = f"{self.base_url}/shell/start"
