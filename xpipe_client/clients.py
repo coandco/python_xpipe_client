@@ -2,15 +2,15 @@ import json
 import os
 from contextlib import suppress
 from pathlib import Path
-from typing import Optional, Union, List, BinaryIO
+from typing import BinaryIO, List, Optional, Union
 
 import aiohttp.web_response
+import requests
 from aiohttp import ClientResponseError
 from aiohttp_requests import requests as async_requests
-import requests
 from packaging.version import Version
 
-from .exceptions import NoTokenFoundException, AuthFailedException, error_code_map
+from .exceptions import AuthFailedException, NoTokenFoundException, error_code_map
 
 
 class Client:
@@ -109,7 +109,7 @@ class Client:
         endpoint = f"{self.base_url}/connection/query"
         data = {"categoryFilter": categories, "connectionFilter": connections, "typeFilter": types}
         response = self.post(endpoint, json=data)
-        return json.loads(response).get('found', [])
+        return json.loads(response).get("found", [])
 
     def connection_info(self, uuids: Union[str, List[str]]) -> List[dict]:
         endpoint = f"{self.base_url}/connection/info"
@@ -150,25 +150,18 @@ class Client:
     def fs_blob(self, blob_data: Union[bytes, str, BinaryIO]) -> str:
         endpoint = f"{self.base_url}/fs/blob"
         if isinstance(blob_data, str):
-            blob_data = blob_data.encode('utf-8')
+            blob_data = blob_data.encode("utf-8")
         response = self.post(endpoint, data=blob_data)
         return json.loads(response)["blob"]
 
     def fs_write(self, connection: str, blob: str, path: str):
         endpoint = f"{self.base_url}/fs/write"
-        data = {
-            "connection": connection,
-            "blob": blob,
-            "path": path
-        }
+        data = {"connection": connection, "blob": blob, "path": path}
         self.post(endpoint, json=data)
 
     def fs_script(self, connection: str, blob: str) -> str:
         endpoint = f"{self.base_url}/fs/script"
-        data = {
-            "connection": connection,
-            "blob": blob
-        }
+        data = {"connection": connection, "blob": blob}
         response = self.post(endpoint, json=data)
         return json.loads(response)["path"]
 
@@ -176,10 +169,7 @@ class Client:
         # Internal version of the function that returns the raw response object
         # Here so clients can do things like stream the response to disk if it's a big file
         endpoint = f"{self.base_url}/fs/read"
-        data = {
-            "connection": connection,
-            "path": path
-        }
+        data = {"connection": connection, "path": path}
         return self._post(endpoint, json=data, stream=True)
 
     def fs_read(self, connection: str, path: str) -> bytes:
@@ -188,7 +178,7 @@ class Client:
 
 class AsyncClient(Client):
     @classmethod
-    def from_sync_client(cls, sync: Client) -> 'AsyncClient':
+    def from_sync_client(cls, sync: Client) -> "AsyncClient":
         async_client = cls(token=sync.token, base_url=sync.base_url, raise_errors=sync.raise_errors)
         async_client.auth_type = sync.auth_type
         async_client.session = sync.session
@@ -314,25 +304,18 @@ class AsyncClient(Client):
     async def fs_blob(self, blob_data: Union[bytes, str]) -> str:
         endpoint = f"{self.base_url}/fs/blob"
         if isinstance(blob_data, str):
-            blob_data = blob_data.encode('utf-8')
+            blob_data = blob_data.encode("utf-8")
         response = await self.post(endpoint, data=blob_data)
         return json.loads(response)["blob"]
 
     async def fs_write(self, connection: str, blob: str, path: str):
         endpoint = f"{self.base_url}/fs/write"
-        data = {
-            "connection": connection,
-            "blob": blob,
-            "path": path
-        }
+        data = {"connection": connection, "blob": blob, "path": path}
         await self.post(endpoint, json=data)
 
     async def fs_script(self, connection: str, blob: str) -> str:
         endpoint = f"{self.base_url}/fs/script"
-        data = {
-            "connection": connection,
-            "blob": blob
-        }
+        data = {"connection": connection, "blob": blob}
         response = await self.post(endpoint, json=data)
         return json.loads(response)["path"]
 
@@ -340,10 +323,7 @@ class AsyncClient(Client):
         # Internal version of the function that returns the raw response object
         # Here so clients can do things like stream the response to disk if it's a big file
         endpoint = f"{self.base_url}/fs/read"
-        data = {
-            "connection": connection,
-            "path": path
-        }
+        data = {"connection": connection, "path": path}
         resp = await self._post(endpoint, json=data)
         return resp
 
