@@ -19,7 +19,7 @@ class Client:
     base_url: str
     raise_errors: bool
     session: Optional[str] = None
-    min_version: Version = Version("10.0-21")
+    min_version: Version = Version("10.0-22")
 
     def __init__(
         self, token: Optional[str] = None, base_url: Optional[str] = None, ptb: bool = False, raise_errors: bool = True
@@ -35,7 +35,7 @@ class Client:
                 raise NoTokenFoundException(f"No auth provided and couldn't load xpipe_auth: {e!r}")
 
         if not base_url:
-            base_url = "http://127.0.0.1:21723" if ptb else "http://127.0.0.1:21722"
+            base_url = "http://127.0.0.1:21722" if ptb else "http://127.0.0.1:21721"
 
         self.token = token
         self.auth_type = auth_type
