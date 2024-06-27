@@ -221,7 +221,7 @@ class AsyncClient(Client):
         req_id = str(uuid.uuid4())
         logger.debug(f"[{req_id}] {self.base_url}/handshake POST with args {data}")
         resp = await async_requests.post(f"{self.base_url}/handshake", json=data)
-        logger.debug(f"[{req_id}] Response: {await resp.content}")
+        logger.debug(f"[{req_id}] Response: {await resp.read()}")
         parsed = await resp.json(content_type=None)
         session_token = parsed.get("sessionToken", None)
         if session_token:
