@@ -1,5 +1,7 @@
 import json
+import logging
 import os
+import uuid
 from contextlib import suppress
 from pathlib import Path
 from typing import BinaryIO, List, Optional, Union
@@ -12,11 +14,8 @@ from packaging.version import Version
 
 from .exceptions import AuthFailedException, NoTokenFoundException, error_code_map
 
-import logging
-
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
-logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.NullHandler())
 
 
 class Client:
@@ -54,9 +53,11 @@ class Client:
         else:
             auth = {"type": self.auth_type, "authFileContent": self.token}
         data = {"auth": auth, "client": {"type": "Api", "name": "python_xpipe_client"}}
+        req_id = str(uuid.uuid4())
+        logger.debug(f"[{req_id}] {self.base_url}/handshake POST with args {data}")
         result = requests.post(f"{self.base_url}/handshake", json=data)
+        logger.debug(f"[{req_id}] Response: {result.content}")
         response = result.json()
-        logger.debug({'url': f"{self.base_url}/handshake", 'data': data, 'status_code': result.status_code, 'response': response})
         session = response.get("sessionToken", None)
         if session:
             self.session = session
@@ -66,13 +67,17 @@ class Client:
             Version(self.daemon_version()["version"]) >= self.min_version
         ), f"xpipe_client requires XPipe of at least {self.min_version}"
 
-    def _post(self, *args, **kwargs) -> requests.Response:
+    def _post(self, *args, req_id: Optional[str] = None, **kwargs) -> requests.Response:
         if not self.session:
             self.renew_session()
-        kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
+
+        if not req_id:
+            req_id = str(uuid.uuid4())
         url = args[0]
         data = kwargs.get("json", {})
-        logger.debug(f"xdebug_client post request to {url}: {data}")
+        logger.debug(f"[{req_id}] {url} POST with args {data}")
+
+        kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
         resp: requests.Response = requests.post(*args, **kwargs)
         status_code, reason = resp.status_code, error_code_map.get(resp.status_code, "Unknown Code")
         if self.raise_errors and status_code >= 400:
@@ -88,11 +93,21 @@ class Client:
         return resp
 
     def post(self, *args, **kwargs) -> bytes:
-        return self._post(*args, **kwargs).content
+        req_id = uuid.uuid4()
+        resp = self._post(*args, req_id=str(req_id), **kwargs)
+        logger.debug(f"[{req_id}] Response: {resp.content[:4096]}")
+        return resp.content
 
-    def _get(self, *args, **kwargs) -> requests.Response:
+    def _get(self, *args, req_id: Optional[str] = None, **kwargs) -> requests.Response:
         if not self.session:
             self.renew_session()
+
+        if not req_id:
+            req_id = str(uuid.uuid4())
+        url = args[0]
+        data = kwargs.get("json", {})
+        logger.debug(f"[{req_id}] {url} GET with args {data}")
+
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
         resp = requests.get(*args, **kwargs)
         status_code, reason = resp.status_code, error_code_map.get(resp.status_code, "Unknown Code")
@@ -113,7 +128,10 @@ class Client:
         return resp
 
     def get(self, *args, **kwargs) -> bytes:
-        return self._get(*args, **kwargs).content
+        req_id = uuid.uuid4()
+        resp = self._get(*args, **kwargs)
+        logger.debug(f"[{req_id}] Response: {resp.content[:4096]}")
+        return resp.content
 
     def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[str]:
         endpoint = f"{self.base_url}/connection/query"
@@ -200,8 +218,10 @@ class AsyncClient(Client):
         else:
             auth = {"type": self.auth_type, "authFileContent": self.token}
         data = {"auth": auth, "client": {"type": "Api", "name": "python_xpipe_client"}}
-
+        req_id = str(uuid.uuid4())
+        logger.debug(f"[{req_id}] {self.base_url}/handshake POST with args {data}")
         resp = await async_requests.post(f"{self.base_url}/handshake", json=data)
+        logger.debug(f"[{req_id}] Response: {await resp.content}")
         parsed = await resp.json(content_type=None)
         session_token = parsed.get("sessionToken", None)
         if session_token:
@@ -212,9 +232,16 @@ class AsyncClient(Client):
             Version((await self.daemon_version())["version"]) >= self.min_version
         ), f"xpipe_client requires XPipe of at least {self.min_version}"
 
-    async def _post(self, *args, **kwargs) -> aiohttp.ClientResponse:
+    async def _post(self, *args, req_id: Optional[str] = None, **kwargs) -> aiohttp.ClientResponse:
         if not self.session:
             await self.renew_session()
+
+        if not req_id:
+            req_id = str(uuid.uuid4())
+        url = args[0]
+        data = kwargs.get("json", {})
+        logger.debug(f"[{req_id}] {url} POST with args {data}")
+
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
         resp = await async_requests.post(*args, **kwargs)
         if self.raise_errors and not resp.ok:
@@ -238,12 +265,22 @@ class AsyncClient(Client):
         return resp
 
     async def post(self, *args, **kwargs) -> bytes:
-        resp = await self._post(*args, **kwargs)
-        return await resp.read()
+        req_id = uuid.uuid4()
+        resp = await self._post(*args, req_id=str(req_id), **kwargs)
+        content = await resp.read()
+        logger.debug(f"[{req_id}] Response: {content[:4096]}")
+        return content
 
-    async def _get(self, *args, **kwargs) -> aiohttp.ClientResponse:
+    async def _get(self, *args, req_id: Optional[str] = None, **kwargs) -> aiohttp.ClientResponse:
         if not self.session:
             await self.renew_session()
+
+        if not req_id:
+            req_id = str(uuid.uuid4())
+        url = args[0]
+        data = kwargs.get("json", {})
+        logger.debug(f"[{req_id}] {url} GET with args {data}")
+
         kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.session}"
         resp = await async_requests.get(*args, **kwargs)
         if self.raise_errors and not resp.ok:
@@ -267,8 +304,11 @@ class AsyncClient(Client):
         return resp
 
     async def get(self, *args, **kwargs) -> bytes:
-        resp = await self._get(*args, **kwargs)
-        return await resp.read()
+        req_id = uuid.uuid4()
+        resp = await self._get(*args, req_id=str(req_id), **kwargs)
+        content = await resp.read()
+        logger.debug(f"[{req_id}] Response: {content[:4096]}")
+        return content
 
     async def connection_query(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[str]:
         endpoint = f"{self.base_url}/connection/query"
