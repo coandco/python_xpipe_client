@@ -19,7 +19,7 @@ class Client:
     base_url: str
     raise_errors: bool
     session: Optional[str] = None
-    min_version: Version = Version("10.0-22")
+    min_version: Version = Version("10.1-3")
 
     def __init__(
         self, token: Optional[str] = None, base_url: Optional[str] = None, ptb: bool = False, raise_errors: bool = True
@@ -119,6 +119,43 @@ class Client:
         data = {"connections": uuids}
         response = self.post(endpoint, json=data)
         return json.loads(response).get("infos", [])
+
+    def connection_add(self, name: str, conn_data: dict, validate: bool = False) -> str:
+        endpoint = f"{self.base_url}/connection/add"
+        data = {"name": name, "data": conn_data, "validate": validate}
+        response = self.post(endpoint, json=data)
+        return json.loads(response)["connection"]
+
+    def connection_remove(self, uuids: Union[str, List[str]]):
+        endpoint = f"{self.base_url}/connection/remove"
+        if not isinstance(uuids, list):
+            uuids = [uuids]
+        data = {"connections": uuids}
+        self.post(endpoint, json=data)
+
+    def connection_browse(self, connection: str, directory: Optional[str] = None):
+        endpoint = f"{self.base_url}/connection/browse"
+        data = {"connection": connection}
+        if directory:
+            data["directory"] = directory
+        self.post(endpoint, json=data)
+
+    def connection_terminal(self, connection: str, directory: Optional[str] = None):
+        endpoint = f"{self.base_url}/connection/terminal"
+        data = {"connection": connection}
+        if directory:
+            data["directory"] = directory
+        self.post(endpoint, json=data)
+
+    def connection_toggle(self, connection: str, state: bool):
+        endpoint = f"{self.base_url}/connection/toggle"
+        data = {"connection": connection, "state": state}
+        self.post(endpoint, json=data)
+
+    def connection_refresh(self, connection: str):
+        endpoint = f"{self.base_url}/connection/refresh"
+        data = {"connection": connection}
+        self.post(endpoint, json=data)
 
     def get_connections(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[dict]:
         """Convenience method to chain connection/query with connection/info"""
@@ -274,6 +311,43 @@ class AsyncClient(Client):
         data = {"connections": uuids}
         response = await self.post(endpoint, json=data)
         return json.loads(response).get("infos", [])
+
+    async def connection_add(self, name: str, conn_data: dict, validate: bool = False) -> str:
+        endpoint = f"{self.base_url}/connection/add"
+        data = {"name": name, "data": conn_data, "validate": validate}
+        response = await self.post(endpoint, json=data)
+        return json.loads(response)["connection"]
+
+    async def connection_remove(self, uuids: Union[str, List[str]]):
+        endpoint = f"{self.base_url}/connection/remove"
+        if not isinstance(uuids, list):
+            uuids = [uuids]
+        data = {"connections": uuids}
+        await self.post(endpoint, json=data)
+
+    async def connection_browse(self, connection: str, directory: Optional[str] = None):
+        endpoint = f"{self.base_url}/connection/browse"
+        data = {"connection": connection}
+        if directory:
+            data["directory"] = directory
+        await self.post(endpoint, json=data)
+
+    async def connection_terminal(self, connection: str, directory: Optional[str] = None):
+        endpoint = f"{self.base_url}/connection/terminal"
+        data = {"connection": connection}
+        if directory:
+            data["directory"] = directory
+        await self.post(endpoint, json=data)
+
+    async def connection_toggle(self, connection: str, state: bool):
+        endpoint = f"{self.base_url}/connection/toggle"
+        data = {"connection": connection, "state": state}
+        await self.post(endpoint, json=data)
+
+    async def connection_refresh(self, connection: str):
+        endpoint = f"{self.base_url}/connection/refresh"
+        data = {"connection": connection}
+        await self.post(endpoint, json=data)
 
     async def get_connections(self, categories: str = "*", connections: str = "*", types: str = "*") -> List[dict]:
         uuids = await self.connection_query(categories, connections, types)

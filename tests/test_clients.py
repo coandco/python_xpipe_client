@@ -1,7 +1,10 @@
-import pytest
 import os
 from pathlib import Path
-from xpipe_client.clients import Client, AsyncClient
+
+import pytest
+from aiohttp.client_exceptions import ClientResponseError
+from requests.exceptions import HTTPError
+from xpipe_client.clients import AsyncClient, Client
 
 
 @pytest.fixture
@@ -74,6 +77,94 @@ async def test_async_connection_info(async_local_client: AsyncClient):
     assert local_info["usageCategory"] == "shell"
 
 
+def test_connection_add_remove(sync_local_client: Client):
+    local_conn = sync_local_client.connection_query(connections="local machine")[0]
+    if response := sync_local_client.connection_query(connections="services/xpipe_client_test"):
+        sync_local_client.connection_remove(response[0])
+        assert not sync_local_client.connection_query(connections="services/xpipe_client_test")
+    conn_data = {"type": "customService", "remotePort": 65535, "localPort": 65535, "host": {"storeId": local_conn}}
+    test_uuid = sync_local_client.connection_add("xpipe_client_test", conn_data)
+    assert sync_local_client.connection_query(connections="services/xpipe_client_test")
+    sync_local_client.connection_remove(test_uuid)
+    assert not sync_local_client.connection_query(connections="services/xpipe_client_test")
+
+
+async def test_async_connection_add_remove(async_local_client: AsyncClient):
+    local_conn = (await async_local_client.connection_query(connections="local machine"))[0]
+    if response := (await async_local_client.connection_query(connections="services/xpipe_client_test")):
+        await async_local_client.connection_remove(response[0])
+        assert not (await async_local_client.connection_query(connections="services/xpipe_client_test"))
+    conn_data = {"type": "customService", "remotePort": 65535, "localPort": 65535, "host": {"storeId": local_conn}}
+    test_uuid = await async_local_client.connection_add("xpipe_client_test", conn_data)
+    assert (await async_local_client.connection_query(connections="services/xpipe_client_test"))
+    await async_local_client.connection_remove(test_uuid)
+    assert not (await async_local_client.connection_query(connections="services/xpipe_client_test"))
+
+
+def test_connection_browse(sync_local_client: Client):
+    # We don't want to actually cause the GUI to change, so we're just going to test that it
+    # throws the proper exception when passed a bad connection UUID
+    fake_conn = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+    with pytest.raises(HTTPError, match="Unknown connection"):
+        sync_local_client.connection_browse(fake_conn)
+
+
+async def test_async_connection_browse(async_local_client: AsyncClient):
+    # We don't want to actually cause the GUI to change, so we're just going to test that it
+    # throws the proper exception when passed a bad connection UUID
+    fake_conn = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+    with pytest.raises(ClientResponseError, match="Unknown connection"):
+        await async_local_client.connection_browse(fake_conn)
+
+
+def test_connection_terminal(sync_local_client: Client):
+    # We don't want to actually cause the GUI to change, so we're just going to test that it
+    # throws the proper exception when passed a bad connection UUID
+    fake_conn = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+    with pytest.raises(HTTPError, match="Unknown connection"):
+        sync_local_client.connection_terminal(fake_conn)
+
+
+async def test_async_connection_terminal(async_local_client: AsyncClient):
+    # We don't want to actually cause the GUI to change, so we're just going to test that it
+    # throws the proper exception when passed a bad connection UUID
+    fake_conn = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+    with pytest.raises(ClientResponseError, match="Unknown connection"):
+        await async_local_client.connection_terminal(fake_conn)
+
+
+def test_connection_toggle(sync_local_client: Client):
+    local_conn = sync_local_client.connection_query(connections="local machine")[0]
+    conn_data = {"type": "customService", "remotePort": 65535, "localPort": 65535, "host": {"storeId": local_conn}}
+    conn_uuid = sync_local_client.connection_add(name="xpipe_client_test", conn_data=conn_data)
+    # For now, just try to toggle the connection on.  Once we can actually check state through the API, we'll do that
+    # Until then, we just want to make sure we don't get any HTTP errors when toggling the connection
+    sync_local_client.connection_toggle(conn_uuid, True)
+    sync_local_client.connection_remove(conn_uuid)
+
+
+async def test_sync_connection_toggle(async_local_client: AsyncClient):
+    local_conn = (await async_local_client.connection_query(connections="local machine"))[0]
+    conn_data = {"type": "customService", "remotePort": 65535, "localPort": 65535, "host": {"storeId": local_conn}}
+    conn_uuid = await async_local_client.connection_add(name="xpipe_client_test", conn_data=conn_data)
+    # For now, just try to toggle the connection on.  Once we can actually check state through the API, we'll do that
+    # Until then, we just want to make sure we don't get any HTTP errors when toggling the connection
+    await async_local_client.connection_toggle(conn_uuid, True)
+    await async_local_client.connection_remove(conn_uuid)
+
+
+def test_connection_refresh(sync_local_client: Client):
+    local_conn = sync_local_client.connection_query(connections="local machine")[0]
+    # We just want to make sure we don't get any HTTP errors when refreshing the connection
+    sync_local_client.connection_refresh(local_conn)
+
+
+async def test_async_connection_refresh(async_local_client: AsyncClient):
+    local_conn = (await async_local_client.connection_query(connections="local machine"))[0]
+    # We just want to make sure we don't get any HTTP errors when refreshing the connection
+    await async_local_client.connection_refresh(local_conn)
+
+
 def test_get_connections(sync_local_client: Client):
     local_info = sync_local_client.get_connections(connections="local machine")[0]
     assert local_info["type"] == "local"
@@ -88,12 +179,12 @@ async def test_async_get_connections(async_local_client: AsyncClient):
 
 def test_daemon_version(sync_local_client: Client):
     version_info = sync_local_client.daemon_version()
-    assert set(version_info.keys()) == {"version", "canonicalVersion", "buildVersion", "jvmVersion"}
+    assert set(version_info.keys()) == {"version", "canonicalVersion", "buildVersion", "pro", "jvmVersion"}
 
 
 async def test_async_daemon_version(async_local_client: AsyncClient):
     version_info = await async_local_client.daemon_version()
-    assert set(version_info.keys()) == {"version", "canonicalVersion", "buildVersion", "jvmVersion"}
+    assert set(version_info.keys()) == {"version", "canonicalVersion", "buildVersion", "pro", "jvmVersion"}
 
 
 def test_shell_start(sync_local_client: Client):
@@ -234,74 +325,3 @@ async def test_async_fs_read(async_local_client: AsyncClient):
         await async_local_client.shell_stop(connection)
     finally:
         testfile_path.unlink(missing_ok=True)
-
-
-
-# SPARSE_SCRIPT_WINDOWS = """@echo off
-# REM create new file at {path}
-# type NUL > "{path}"
-# REM set the file as sparse
-# fsutil sparse setflag "{path}"
-# REM set the sparse range to ~150MB
-# fsutil sparse setrange "{path}" 0 0x8F00000
-# REM set the end of the file to the end of range
-# fsutil file seteof "{path}" 0x8F00000
-# """
-#
-# SPARSE_SCRIPT_UNIX = """#!/bin/bash
-# truncate -s 150M '{path}'
-# """
-#
-#
-# def create_big_file(client: Client, connection: str, path: str) -> bool:
-#     system_info = client.shell_start(connection)
-#     script = SPARSE_SCRIPT_WINDOWS if system_info["osType"] == "Windows" else SPARSE_SCRIPT_UNIX
-#     blob = client.fs_blob(script.format(path=path))
-#     script_file = client.fs_script(connection, blob)
-#     retval = client.shell_exec(connection, script_file)
-#     return retval.get('exitCode', 255) == 0
-#
-#
-# async def create_big_file_async(client: AsyncClient, connection: str, path: str) -> bool:
-#     system_info = await client.shell_start(connection)
-#     script = SPARSE_SCRIPT_WINDOWS if system_info["osType"] == "Windows" else SPARSE_SCRIPT_UNIX
-#     blob = await client.fs_blob(script.format(path=path))
-#     script_file = await client.fs_script(connection, blob)
-#     retval = await client.shell_exec(connection, script_file)
-#     return retval.get('exitCode', 255) == 0
-#
-#
-# def test_fs_read_big(sync_local_client: Client):
-#     connection = sync_local_client.connection_query(connections="")[0]["connection"]
-#     system_info = sync_local_client.shell_start(connection)
-#     # Create sparse file for testing
-#     from_path = Path(system_info["temp"]) / "xpipe_testfrom"
-#     try:
-#         success = create_big_file(sync_local_client, connection, str(from_path.resolve()))
-#         assert success, f"Failed to create large file at {from_path} for testing"
-#         resp = sync_local_client._fs_read(connection, str(from_path.resolve()))
-#         zeroes = b'\0' * 1024
-#         for chunk in resp.iter_content(1024):
-#             assert chunk == zeroes[:len(chunk)]
-#         sync_local_client.shell_stop(connection)
-#     finally:
-#         from_path.unlink(missing_ok=True)
-#
-#
-# async def test_async_fs_read_big(async_local_client: AsyncClient):
-#     connection = await async_local_client.connection_query(connections="")[0]["connection"]
-#     system_info = await async_local_client.shell_start(connection)
-#     # Create sparse file for testing
-#     from_path = Path(system_info["temp"]) / "xpipe_testfrom"
-#     to_path = Path(system_info["temp"]) / "xpipe_testto"
-#     try:
-#         success = await create_big_file_async(async_local_client, connection, str(from_path.resolve()))
-#         assert success, f"Failed to create large file at {from_path} for testing"
-#         resp = await async_local_client._fs_read(connection, str(from_path.resolve()))
-#         zeroes = b'\0' * 1024
-#         async for chunk in resp.iter_content(1024):
-#             assert chunk == zeroes[:len(chunk)]
-#         await async_local_client.shell_stop(connection)
-#     finally:
-#         from_path.unlink(missing_ok=True)
-#         to_path.unlink(missing_ok=True)
