@@ -137,9 +137,10 @@ def test_connection_toggle(sync_local_client: Client):
     local_conn = sync_local_client.connection_query(connections="local machine")[0]
     conn_data = {"type": "customService", "remotePort": 65535, "localPort": 65535, "host": {"storeId": local_conn}}
     conn_uuid = sync_local_client.connection_add(name="xpipe_client_test", conn_data=conn_data)
-    # For now, just try to toggle the connection on.  Once we can actually check state through the API, we'll do that
-    # Until then, we just want to make sure we don't get any HTTP errors when toggling the connection
     sync_local_client.connection_toggle(conn_uuid, True)
+    assert sync_local_client.connection_info(conn_uuid)[0]["cache"]["sessionEnabled"]
+    sync_local_client.connection_toggle(conn_uuid, False)
+    assert not sync_local_client.connection_info(conn_uuid)[0]["cache"]["sessionEnabled"]
     sync_local_client.connection_remove(conn_uuid)
 
 
@@ -147,9 +148,10 @@ async def test_sync_connection_toggle(async_local_client: AsyncClient):
     local_conn = (await async_local_client.connection_query(connections="local machine"))[0]
     conn_data = {"type": "customService", "remotePort": 65535, "localPort": 65535, "host": {"storeId": local_conn}}
     conn_uuid = await async_local_client.connection_add(name="xpipe_client_test", conn_data=conn_data)
-    # For now, just try to toggle the connection on.  Once we can actually check state through the API, we'll do that
-    # Until then, we just want to make sure we don't get any HTTP errors when toggling the connection
     await async_local_client.connection_toggle(conn_uuid, True)
+    assert (await async_local_client.connection_info(conn_uuid))[0]["cache"]["sessionEnabled"]
+    await async_local_client.connection_toggle(conn_uuid, False)
+    assert not (await async_local_client.connection_info(conn_uuid))[0]["cache"]["sessionEnabled"]
     await async_local_client.connection_remove(conn_uuid)
 
 
