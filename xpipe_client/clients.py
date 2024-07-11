@@ -31,6 +31,8 @@ class Client:
                 auth_type = "Local"
                 auth_file = Path(os.getenv("TEMP", "/tmp")) / "xpipe_auth"
                 token = auth_file.read_text().strip()
+            except PermissionError:
+                raise NoTokenFoundException("Bad permissions on xpipe_auth: is the daemon running as another user?")
             except Exception as e:
                 raise NoTokenFoundException(f"No auth provided and couldn't load xpipe_auth: {e!r}")
 
