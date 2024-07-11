@@ -29,7 +29,8 @@ class Client:
         if not token:
             try:
                 auth_type = "Local"
-                auth_file = Path(os.getenv("TEMP", "/tmp")) / "xpipe_auth"
+                # Look for Windows or Mac env vars for tmpdir, fall back to /tmp if they don't exist
+                auth_file = Path(os.getenv("TEMP") or os.getenv("TMPDIR") or "/tmp") / "xpipe_auth"
                 token = auth_file.read_text().strip()
             except PermissionError:
                 raise NoTokenFoundException("Bad permissions on xpipe_auth: is the daemon running as another user?")
