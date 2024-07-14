@@ -19,7 +19,7 @@ class Client:
     base_url: str
     raise_errors: bool
     session: Optional[str] = None
-    min_version: Version = Version("10.1-3")
+    min_version: Version = Version("10.1-12")
 
     def __init__(
         self, token: Optional[str] = None, base_url: Optional[str] = None, ptb: bool = False, raise_errors: bool = True
@@ -29,8 +29,9 @@ class Client:
         if not token:
             try:
                 auth_type = "Local"
+                auth_filename = "xpipe_ptb_auth" if ptb else "xpipe_auth"
                 # Look for Windows or Mac env vars for tmpdir, fall back to /tmp if they don't exist
-                auth_file = Path(os.getenv("TEMP") or os.getenv("TMPDIR") or "/tmp") / "xpipe_auth"
+                auth_file = Path(os.getenv("TEMP") or os.getenv("TMPDIR") or "/tmp") / auth_filename
                 token = auth_file.read_text().strip()
             except PermissionError:
                 raise NoTokenFoundException("Bad permissions on xpipe_auth: is the daemon running as another user?")
